@@ -13,12 +13,15 @@ st.write("最終日:", end_date)
 date_list = [int((start_date + timedelta(days=i)).strftime("%m%d")) 
              for i in range((end_date - start_date).days + 1)]
 period_list = [1, 2, 3, 4, 5, 6]
-bands_list = st.text_area("バンド名を改行区切りで入力してください").splitlines()
+pre_bands_list = st.text_area("バンド名を改行区切りで入力してください").splitlines()
+bands_list = sorted(pre_bands_list)
 st.write("バンド一覧:", bands_list)
 leftover_bands = []
-csv_files = st.file_uploader("各バンドのCSVファイルをアップロードしてください", 
+pre_csv_files = st.file_uploader("各バンドのCSVファイルをアップロードしてください", 
                                 accept_multiple_files=True)
+csv_files = sorted(pre_csv_files, key=lambda f: f.name)
 per_band_arrays = []
+
 
 if st.button("実行！"):
     with st.spinner('処理中...'):
