@@ -5,26 +5,34 @@ from datetime import datetime, timedelta
 import streamlit as st
 import time
 
+VERSION = "1.1.0" #as of 2025-11-10
+
+with open("changelog.md", "r", encoding="utf-8") as f:
+    changelog_content = f.read()
+
 st.title("固定枠作成ツール")
-start_date = st.date_input("期間の初日を入力してください", datetime(2025, 1, 1))
-st.write("開始日:", start_date)
-end_date = st.date_input("期間の最終日を入力してください", datetime(2025, 1, 1))
-st.write("最終日:", end_date)
-date_list = [int((start_date + timedelta(days=i)).strftime("%m%d")) 
-             for i in range((end_date - start_date).days + 1)]
-period_list = [1, 2, 3, 4, 5, 6]
+st.markdown(f"<p style='text-align: right; color: gray;'>ver. {VERSION}</b></p>", unsafe_allow_html=True)
+
+start_date = datetime(2025, 1, 1)
+end_date = datetime(2025, 1, 1)
+dates = st.date_input("期間を選択してください", [start_date, end_date])
+
+
 pre_bands_list = st.text_area("バンド名を改行区切りで入力してください").splitlines()
 bands_list = sorted(pre_bands_list)
-st.write("バンド一覧:", bands_list)
+
 leftover_bands = []
 pre_csv_files = st.file_uploader("各バンドのCSVファイルをアップロードしてください", 
-                                accept_multiple_files=True)
+                                accept_multiple_files=True, type=['csv'])
 csv_files = sorted(pre_csv_files, key=lambda f: f.name)
 per_band_arrays = []
 
 
 if st.button("実行！"):
     with st.spinner('処理中...'):
+        date_list = [int((start_date + timedelta(days=i)).strftime("%m%d")) 
+             for i in range((end_date - start_date).days + 1)]
+        period_list = [1, 2, 3, 4, 5, 6]
         
         for uploaded_file in csv_files:
             try:
@@ -158,3 +166,19 @@ if st.button("実行！"):
             file_name='koteiwaku_data.csv',
             mime='text/csv',
     )
+
+with open("changelog.md", "r", encoding="utf-8") as f:
+    changelog_content = f.read()
+
+st.markdown("""
+            <style>
+            .small-text {
+                font-size: 13px;
+                line-height: 1.4;
+                color: gray;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+with st.expander("バージョン履歴", expanded=False):
+    st.caption(changelog_content)
