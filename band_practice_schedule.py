@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 import time
 
-VERSION = "1.1.0" #as of 2025-11-10
+VERSION = "2.0.0" #as of 2025-11-11
 
 with open("changelog.md", "r", encoding="utf-8") as f:
     changelog_content = f.read()
@@ -32,6 +32,7 @@ if st.button("実行！"):
     with st.spinner('処理中...'):
         start_date = dates[0]
         end_date = dates[1]
+        
         date_list = [int((start_date + timedelta(days=i)).strftime("%m%d")) 
              for i in range((end_date - start_date).days + 1)]
         period_list = [1, 2, 3, 4, 5, 6]
@@ -68,12 +69,18 @@ if st.button("実行！"):
     # インデックス（反復可能にする）
         B_idx = range(B)          # 0..B-1
         D_idx = range(D)          # 0..D-1
+    # 重みの設定
+        l = np.zeros((P, D))
+        for i in range(6):
+            for j in D_idx:
+                l[i, j] = (P - abs(2.5 - i)) * (D + j) / (P*D)
+        #st.write(l)
     # 3次元の二値変数 x[b,p,d] を辞書で
     # キーはタプル (b,p,d) とする（pは1-based）
         x = LpVariable.dicts("x", [(b, p+1, d) for b in B_idx for p in P_idx for d in D_idx], cat="Binary")
     # 目的関数（全ての x を合計して最大化）
         problem = LpProblem("practice_period", LpMaximize)
-        problem += lpSum(x[b, p+1, d] for b in B_idx for p in P_idx for d in D_idx)
+        problem += lpSum(l[p, d] * x[b, p+1, d] for b in B_idx for p in P_idx for d in D_idx) - 100*lpSum(3.0 - lpSum(x[(b, p+1, d)] for p in P_idx for d in reversed(D_idx)) for b in B_idx)
     # 制約：各バンドに対して(d, p)の合計が最大3になる
         for b in B_idx:
             problem += lpSum(x[(b, p+1, d)] for p in P_idx for d in reversed(D_idx)) <= 3
@@ -156,6 +163,7 @@ if st.button("実行！"):
     result_df = pd.DataFrame(data=data, index=period_list, columns=date_list)
     st.write(result_df)
     st.write("固定枠を3枠用意できなかったバンド", leftover_bands)
+    
 
     # ローカルファイルに保存
     result_df.to_csv("固定枠結果.csv", encoding='utf-8_sig', header=True, index=True)
