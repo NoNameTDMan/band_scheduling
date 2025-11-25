@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 import time
 
-VERSION = "1.2.0" #as of 2025-11-11
+VERSION = "1.3.0" #as of 2025-11-25
 
 with open("changelog.md", "r", encoding="utf-8") as f:
     changelog_content = f.read()
@@ -13,10 +13,9 @@ with open("changelog.md", "r", encoding="utf-8") as f:
 st.title("固定枠作成ツール")
 st.markdown(f"<p style='text-align: right; color: gray;'>ver. {VERSION}</b></p>", unsafe_allow_html=True)
 
-start_date = datetime(2025, 1, 1)
-end_date = datetime(2025, 1, 1)
-dates = st.date_input("期間を選択してください", [start_date, end_date])
-
+initial_date = datetime(2025, 1, 1)
+dates = []
+dates = st.date_input("期間を選択してください", [initial_date, initial_date])
 
 pre_bands_list = st.text_area("バンド名を改行区切りで入力してください").splitlines()
 bands_list = sorted(pre_bands_list)
@@ -27,15 +26,71 @@ pre_csv_files = st.file_uploader("各バンドのCSVファイルをアップロ�
 csv_files = sorted(pre_csv_files, key=lambda f: f.name)
 per_band_arrays = []
 
+start_date = dates[0]
+end_date = dates[1]
+initial_date = start_date
 
-if st.button("実行！"):
-    with st.spinner('処理中...'):
-        start_date = dates[0]
-        end_date = dates[1]
+date_list = [int((start_date + timedelta(days=i)).strftime("%m%d"))
+     for i in range((end_date - start_date).days + 1)]
+period_list = [1, 2, 3, 4, 5, 6]
+
+B = len(bands_list)
+D = len(date_list)
+P = len(period_list)
+# P に対する反復用インデックス（0..P-1）
+P_idx = range(P)
+
+np.set_printoptions(threshold=np.inf)
+    
+zero = np.zeros((B, P, D), dtype=np.int8)
         
-        date_list = [int((start_date + timedelta(days=i)).strftime("%m%d")) 
-             for i in range((end_date - start_date).days + 1)]
-        period_list = [1, 2, 3, 4, 5, 6]
+#print(zero)
+        
+def per_band_dataframes_from_array(arr, bands_list, date_list, period_list):
+    B, P, D = arr.shape
+    dfs = {}
+    idx = list(period_list)  # 行: 1～6
+    cols = list(date_list)   # 列: 日付
+    for b, band_label in enumerate(bands_list):
+        # arr[b, :, :] は既に (P, D) の形状
+        df = pd.DataFrame(arr[b, :, :], index=idx, columns=cols)
+        dfs[band_label] = df
+    return dfs
+        
+fixed_bands = per_band_dataframes_from_array(zero, bands_list, date_list, period_list)
+#print(fixed_period)
+   
+fixed_switch = st.radio("固定枠の指定", ("なし", "あり"))
+if fixed_switch == "あり":
+    
+    fixed_bands_list = st.multiselect("枠を指定するバンドを選択してください", bands_list)
+    #st.write(fixed_bands_list)
+    
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        for band in fixed_bands_list[::2]:
+            st.write(band)
+            fixed_date = st.date_input("日付を選択してください", value=initial_date, min_value=start_date, max_value=end_date, key=f"{band}_date")
+            fixed_period = st.selectbox("時限を選択してください", period_list, key=f"{band}_period")
+            # DataFrame を辞書で保持しているため、キーはバンド名で参照します。
+            # DataFrame の行は period (1-based)、列は date_list の整数文字列 (例: '1013') です。
+            col = int(fixed_date.strftime("%m%d"))
+            fixed_bands[band].at[fixed_period, col] = 1
+    with col2:
+        for band in fixed_bands_list[1::2]:
+            st.write(band)
+            fixed_date = st.date_input("日付を選択してください", value=initial_date, min_value=start_date, max_value=end_date, key=f"{band}_date")
+            fixed_period = st.selectbox("時限を選択してください", period_list, key=f"{band}_period")
+            col = int(fixed_date.strftime("%m%d"))
+            fixed_bands[band].at[fixed_period, col] = 1
+
+    
+
+
+
+if st.button("実行", use_container_width=True):
+    with st.spinner('処理中...'):
         
         for uploaded_file in csv_files:
             try:
@@ -54,16 +109,10 @@ if st.button("実行！"):
         if len(per_band_arrays) != len(bands_list):
             st.error(f"バンド数({len(bands_list)})とCSVファイル数({len(per_band_arrays)})が一致しません")
             st.stop()
-
-        B = len(bands_list)
-        D = len(date_list)
-        P = len(period_list)
-    # P に対する反復用インデックス（0..P-1）
-        P_idx = range(P)
-
-        np.set_printoptions(threshold=np.inf)
-
+    
         #st.write(per_band_arrays)
+
+    
 
 
     # インデックス（反復可能にする）
@@ -109,6 +158,22 @@ if st.button("実行！"):
                 for d in D_idx:
                     # a は (B, P, D) の順、pは0-based
                     problem += x[(b, p+1, d)] - per_band_arrays[b][p][d] <= 0
+        
+        # 制約：指定された枠は必ず固定枠に採用する
+        for b in B_idx:
+            band_label = bands_list[b]
+            for p in P_idx:
+                for d in D_idx:
+                    # fixed_bands はバンド名をキーとする DataFrame の辞書
+                    # DataFrame の行は period (1..P)、列は date_list の値
+                    date_val = date_list[d]
+                    try:
+                        fixed_val = int(fixed_bands[band_label].at[p+1, date_val])
+                    except Exception:
+                        # 値が存在しない場合は 0 とみなす
+                        fixed_val = 0
+                    if fixed_val:
+                        problem += x[(b, p+1, d)] >= fixed_val
 
         problem.solve()
         #結果の表示
@@ -136,17 +201,6 @@ if st.button("実行！"):
                 else:
                     arr[b, p, d] = v
             return arr
-
-        def per_band_dataframes_from_array(arr, bands_list, date_list, period_list):
-            B, P, D = arr.shape
-            dfs = {}
-            idx = list(period_list)  # 行: 1～6
-            cols = list(date_list)   # 列: 日付
-            for b, band_label in enumerate(bands_list):
-                # arr[b, :, :] は既に (P, D) の形状
-                df = pd.DataFrame(arr[b, :, :], index=idx, columns=cols)
-                dfs[band_label] = df
-            return dfs
 
         if __name__ == '__main__':
             #problem.solve()
