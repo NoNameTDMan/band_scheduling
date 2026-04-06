@@ -7,7 +7,7 @@ import time
 
 st.title("固定枠作成ツール")
 
-st.session_state.dates = [datetime(2025, 1, 1), datetime(2025, 1, 1)]
+st.session_state.dates = [datetime(2026, 1, 1), datetime(2026, 1, 1)]
 st.session_state.dates = st.date_input("期間を選択してください", st.session_state.dates)
 
 #pre_bands_list = st.text_area("バンド名を改行区切りで入力してください").splitlines()
@@ -70,30 +70,29 @@ def per_band_dataframes_from_array(arr, bands_list, date_list, period_list):
 fixed_bands = per_band_dataframes_from_array(zero, bands_list, date_list, period_list)
 #print(fixed_period)
    
-fixed_switch = st.radio("固定枠の指定", ("なし", "あり"))
-if fixed_switch == "あり":
+#fixed_switch = st.radio("固定枠の指定", ("なし", "あり"))
+#if fixed_switch == "あり":
     
-    fixed_bands_list = st.multiselect("枠を指定するバンドを選択してください", bands_list)
+#    fixed_bands_list = st.multiselect("枠を指定するバンドを選択してください", bands_list)
     #st.write(fixed_bands_list)
     
     
-    col1, col2 = st.columns(2)
-    with col1:
-        for band in fixed_bands_list[::2]:
-            st.write(band)
-            fixed_date = st.date_input("日付を選択してください", min_value=start_date, max_value=end_date, key=f"{band}_date")
-            fixed_period = st.selectbox("時限を選択してください", period_list, key=f"{band}_period")
-            # DataFrame を辞書で保持しているため、キーはバンド名で参照します。
-            # DataFrame の行は period (1-based)、列は date_list の整数文字列 (例: '1013') です。
-            col = int(fixed_date.strftime("%m%d"))
-            fixed_bands[band].at[fixed_period, col] = 1
-    with col2:
-        for band in fixed_bands_list[1::2]:
-            st.write(band)
-            fixed_date = st.date_input("日付を選択してください", min_value=start_date, max_value=end_date, key=f"{band}_date")
-            fixed_period = st.selectbox("時限を選択してください", period_list, key=f"{band}_period")
-            col = int(fixed_date.strftime("%m%d"))
-            fixed_bands[band].at[fixed_period, col] = 1
+#    col1, col2 = st.columns(2)
+#        for band in fixed_bands_list[::2]:
+#            st.write(band)
+#            fixed_date = st.date_input("日付を選択してください", min_value=start_date, max_value=end_date, key=f"{band}_date")
+#            fixed_period = st.selectbox("時限を選択してください", period_list, key=f"{band}_period")
+#            # DataFrame を辞書で保持しているため、キーはバンド名で参照します。
+#            # DataFrame の行は period (1-based)、列は date_list の整数文字列 (例: '1013') です。
+#            col = int(fixed_date.strftime("%m%d"))
+#            fixed_bands[band].at[fixed_period, col] = 1
+#    with col2:
+#        for band in fixed_bands_list[1::2]:
+#            st.write(band)
+#            fixed_date = st.date_input("日付を選択してください", min_value=start_date, max_value=end_date, key=f"{band}_date")
+#            fixed_period = st.selectbox("時限を選択してください", period_list, key=f"{band}_period")
+#            col = int(fixed_date.strftime("%m%d"))
+#            fixed_bands[band].at[fixed_period, col] = 1
 
     
 

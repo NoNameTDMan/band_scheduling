@@ -10,9 +10,9 @@ if "band_name_input" not in st.session_state:
     st.session_state["band_name_input"] = ""
 
 band_name = st.text_input("バンド名を入力してください", key="band_name_input")
-initial_date = datetime(2025, 1, 1)
+initial_date = datetime(2026, 1, 1)
 
-st.session_state.dates = [datetime(2025, 1, 1), datetime(2025, 1, 1)]
+st.session_state.dates = [datetime(2026, 1, 1), datetime(2026, 1, 1)]
 st.session_state.dates = st.date_input("期間を選択してください", st.session_state.dates)
 
 period_list = [1, 2, 3, 4, 5, 6]
@@ -76,5 +76,4 @@ if band_name != "" and len(st.session_state.dates) == 2:
         return
 
     st.button("リセット", on_click=_reset)
-
     
